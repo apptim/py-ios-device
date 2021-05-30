@@ -38,4 +38,6 @@ setup(name='py_ios_device',
               'pyidevice=ios_device.main:cli'
           }
       },
+      zip_safe=False,
+      include_package_data=True
       )
