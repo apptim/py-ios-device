@@ -294,13 +294,33 @@ class LockdownClient:
             image_zip_path = os.path.join(local_device_support, version + ".zip")
             if not os.path.isfile(image_zip_path):
                 _alias = {
+                    "10.3": "10.3 (14E5230d).zip",
+                    "11.3": "11.3 (15E5178d).zip",
+                    "11.4": "11.4 (15F5037c).zip",
                     "12.0": "12.0 (16A366).zip",
                     "12.1": "12.1 (16B91).zip",
                     "12.2": "12.2 (16E5212e).zip",
+                    "12.3": "12.3.zip",
                     "12.4": "12.4 (16G73).zip",
+                    "13.0": "13.0.zip",
+                    "13.1": "13.1.zip",
+                    "13.2": "13.2.zip",
+                    "13.3": "13.3.zip",
+                    "13.4": "13.4.zip",
+                    "13.5": "13.5.zip",
+                    "13.6": "13.6.zip",
+                    "13.7": "13.7.zip",
+                    "14.0": "14.0.zip",
+                    "14.1": "14.1.zip",
+                    "14.2": "14.2.zip",
+                    "14.3": "14.3.zip",
+                    "14.4": "14.4.zip",
+                    "14.5": "14.5.zip",
+                    "14.6": "14.6.zip",
+                    "15.0": "15.0.zip",
                 }
                 zip_name = _alias.get(version, f"{version}.zip")
-                origin_url = f"https://github.com/filsv/iPhoneOSDeviceSupport/raw/master/DeviceSupport/{zip_name}"
+                origin_url = f"https://github.com/filsv/iPhoneOSDeviceSupport/raw/master/{zip_name}"
                 mirror_url = f"https://tool.appetizer.io/iGhibli/iOS-DeviceSupport/raw/master/DeviceSupport/{zip_name}"
                 log.info("Download %s -> %s", origin_url, image_zip_path)
                 try:
