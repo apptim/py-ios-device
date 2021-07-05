@@ -56,6 +56,8 @@ class DTXClient:
             payload.extend(body_buffer)
             if header.fragment_id == header.fragment_count - 1:
                 break
+        if not header_data:
+            return None
         return DTXMessage.decode(header_data, payload)
 
 
@@ -212,6 +214,8 @@ class DTXServer:
         try:
             while self._running:
                 dtx = self._client.recv_dtx(self._cli)
+                if dtx is None:
+                    continue
                 if '_channelCanceled:' in str(dtx.selector):
                     self._cli.close()
                 if dtx.conversation_index == 1:
