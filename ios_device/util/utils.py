@@ -2,6 +2,7 @@
 Utils
 """
 import os
+import logging
 
 __all__ = ['DictAttrProperty', 'DictAttrFieldNotFoundError']
 ROOT_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -109,7 +110,11 @@ def kperf_data(messages):
     p_record = 0
     m_len = len(messages)
     while p_record < m_len:
-        _list.append(struct.unpack('<QLLQQQQLLQ', messages[p_record:p_record + 64]))
-        p_record += 64
+        try:
+            _list.append(struct.unpack('<QLLQQQQLLQ', messages[p_record:p_record + 64]))
+        except Exception as e:
+            logging.exception(e)
+        finally:
+            p_record += 64
     return _list
 
