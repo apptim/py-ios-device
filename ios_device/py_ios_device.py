@@ -373,23 +373,11 @@ def start_get_system(device_id: str = None, rpc_channel: InstrumentServer = None
 
     _rpc_channel.register_undefined_callback(lambda x: x)
     _rpc_channel.call("com.apple.instruments.server.services.sysmontap", "setConfig:", {
-        'ur': 1000,  # Output frequency ms
+        'ur': 1000,
         'bm': 0,
         'procAttrs': ['name', 'pid', 'cpuUsage', 'threadCount', 'memResidentSize'],
-        # Output all process information fields, the order of the fields is the same as custom
-        # (all self-fields, use on demand)
-        # 'procAttrs': ['memVirtualSize', 'cpuUsage', 'procStatus', 'appSleep', 'uid', 'vmPageIns', 'memRShrd',
-        #               'ctxSwitch', 'memCompressed', 'intWakeups', 'cpuTotalSystem', 'responsiblePID', 'physFootprint',
-        #               'cpuTotalUser', 'sysCallsUnix', 'memResidentSize', 'sysCallsMach', 'memPurgeable',
-        #               'diskBytesRead', 'machPortCount', '__suddenTerm', '__arch', 'memRPrvt', 'msgSent', 'ppid',
-        #               'threadCount', 'memAnon', 'diskBytesWritten', 'pgid', 'faults', 'msgRecv', '__restricted',
-        #               'pid', '__sandbox'],
-        # 'sysAttrs': ['diskWriteOps', 'diskBytesRead', 'diskBytesWritten', 'threadCount', 'vmCompressorPageCount',
-        #              'vmExtPageCount', 'vmFreeCount', 'vmIntPageCount', 'vmPurgeableCount', 'netPacketsIn',
-        #              'vmWireCount', 'netBytesIn', 'netPacketsOut', 'diskReadOps', 'vmUsedCount', '__vmSwapUsage',
-        #              'netBytesOut'],  # System Information Field
-        'cpuUsage': False,
-        'sampleInterval': 500000000})
+        'cpuUsage': True,
+        'sampleInterval': 1000000000})
     _rpc_channel.register_channel_callback("com.apple.instruments.server.services.sysmontap", _callback)
     _rpc_channel.call("com.apple.instruments.server.services.sysmontap", "start")
     return _rpc_channel
