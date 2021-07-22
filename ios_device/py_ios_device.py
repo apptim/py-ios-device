@@ -496,12 +496,13 @@ def start_get_fps(device_id: str = None, rpc_channel: InstrumentServer = None, c
     mach_time_factor = 125 / 3
     frame_count = 0
     time_count = 0
+    time_count_frame = 0
     count_time = datetime.now().timestamp()
     _list = []
 
     def _callback(res):
-        nonlocal frame_count, last_frame, last_1_frame_cost, last_2_frame_cost, last_3_frame_cost, time_count, mach_time_factor, \
-            jank_count, big_jank_count, jank_time_count, _list, count_time
+        nonlocal frame_count, last_frame, last_1_frame_cost, last_2_frame_cost, last_3_frame_cost, time_count, \
+            time_count_frame, mach_time_factor, jank_count, big_jank_count, jank_time_count, _list, count_time
         if type(res.selector) is InstrumentRPCParseError:
             for args in kperf_data(res.selector.data):
                 _time, code = args[0], args[7]
@@ -521,14 +522,18 @@ def start_get_fps(device_id: str = None, rpc_channel: InstrumentServer = None, c
                                     big_jank_count += 1
 
                         last_3_frame_cost, last_2_frame_cost, last_1_frame_cost = last_2_frame_cost, last_1_frame_cost, this_frame_cost
+                        time_count_frame += this_frame_cost
                         time_count += this_frame_cost
                         last_frame = long(_time)
                         frame_count += 1
                 else:
                     time_count = (datetime.now().timestamp() - count_time) * NANO_SECOND
                 if time_count > NANO_SECOND:
+                    fps = 0.0
+                    if time_count_frame > 0:
+                        fps = frame_count / time_count_frame * NANO_SECOND
                     callback(
-                        {"currentTime": str(datetime.now()), "FPS": frame_count / time_count * NANO_SECOND,
+                        {"currentTime": str(datetime.now()), "FPS": fps,
                          "jank": jank_count,
                          "big_jank": big_jank_count, "stutter": jank_time_count / time_count})
                     jank_count = 0
@@ -536,6 +541,7 @@ def start_get_fps(device_id: str = None, rpc_channel: InstrumentServer = None, c
                     jank_time_count = 0
                     frame_count = 0
                     time_count = 0
+                    time_count_frame = 0
                     count_time = datetime.now().timestamp()
 
     _rpc_channel.register_undefined_callback(lambda x: x)
