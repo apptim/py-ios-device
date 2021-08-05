@@ -113,7 +113,7 @@ def kperf_data(messages):
         try:
             _list.append(struct.unpack('<QLLQQQQLLQ', messages[p_record:p_record + 64]))
         except Exception as e:
-            logging.exception(e)
+            logging.warning(e)
         finally:
             p_record += 64
     return _list
