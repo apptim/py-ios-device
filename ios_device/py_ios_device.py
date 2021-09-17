@@ -2,18 +2,18 @@
 @Date    : 2021-01-28
 @Author  : liyachao
 """
+import logging
 import time
 import uuid
 from datetime import datetime
 
 from numpy import long, mean
 
-from ios_device.servers.DTXSever import InstrumentRPCParseError
+from ios_device.util.exceptions import InstrumentRPCParseError
 from ios_device.servers.Installation import InstallationProxyService
 from ios_device.servers.Instrument import InstrumentServer
 from ios_device.util import api_util
 from ios_device.util.api_util import PyIOSDeviceException, RunXCUITest
-from ios_device.util.dtxlib import get_auxiliary_text
 from ios_device.util.forward import ForwardPorts
 from ios_device.util.utils import kperf_data
 
@@ -23,6 +23,7 @@ class PyiOSDevice:
         self.device_id = device_id
         self.xcuitest = None
         self.rpc_channel = None
+        self.energy_stream_number = None
         if not rpc_channel or not rpc_channel._cli:
             self.init()
         else:
@@ -38,9 +39,9 @@ class PyiOSDevice:
     def stop(self):
         self.rpc_channel.stop()
 
-    def get_channel(self):
+    def get_capabilities(self):
         """
-        获取当前设备有哪些服务
+        Get capabilities of the connected device
         :return:
         """
 
@@ -63,7 +64,7 @@ class PyiOSDevice:
 
     def launch_app(self, bundle_id: str = None):
         """
-        启动 app
+        Launch App with Bundle Id
         :param bundle_id:
         :return:
         """
@@ -71,7 +72,7 @@ class PyiOSDevice:
 
     def start_get_network(self, callback: callable):
         """
-        开始获取上下行流量
+        Start Network Monitor
         :param callback:
         :return:
         """
@@ -79,14 +80,14 @@ class PyiOSDevice:
 
     def stop_get_network(self):
         """
-        结束获取网络包内容
+        Stop Network Monitor
         :return:
         """
         stop_get_network(rpc_channel=self.rpc_channel)
 
     def start_get_system(self, callback: callable):
         """
-        开始获取系统数据
+        Start System Monitor
         :param callback:
         :return:
         """
@@ -94,21 +95,37 @@ class PyiOSDevice:
 
     def stop_get_system(self):
         """
-        结束获取系统数据
+        Stop System Monitor
         :return:
         """
         stop_get_system(rpc_channel=self.rpc_channel)
 
+    def start_get_energy(self, callback: callable):
+        """
+        Start Energy Monitor
+        :return:
+        """
+        get_energy_result, self.energy_stream_number = start_get_energy(device_id=self.device_id,
+                                                                        rpc_channel=self.rpc_channel, callback=callback)
+        return get_energy_result
+
+    def stop_get_energy(self):
+        """
+        Stop Energy Monitor
+        :return:
+        """
+        stop_get_energy(rpc_channel=self.rpc_channel, stream_number=self.energy_stream_number)
+
     def get_device(self):
         """
-        获取设备对象用于操作设备
+        Get Device Object
         :return:
         """
         return get_device(device_id=self.device_id, rpc_channel=self.rpc_channel)
 
     def get_applications(self):
         """
-        获取手机应用列表
+        Get list of applications
         :return:
         """
         return get_applications(device_id=self.device_id, rpc_channel=self.rpc_channel)
@@ -140,7 +157,7 @@ class PyiOSDevice:
 
     def start_get_fps(self, callback: callable):
         """
-        开始获取 fps 相关数据
+        Start FPS Monitor
         :param callback:
         :return:
         """
@@ -148,7 +165,7 @@ class PyiOSDevice:
 
     def stop_get_fps(self):
         """
-        结束获取 fps 相关数据
+        Stop FPS Monitor
         :return:
         """
         stop_get_fps(rpc_channel=self.rpc_channel)
@@ -206,25 +223,9 @@ def init(device_id: str = None):
     return rpc_channel
 
 
-def init_wireless(device_id: str = None, *args):
-    """ 局域网使用 wifi 连接 iOS version < 14.0
-        com.apple.instruments.server.services.wireless 在 iOS 14 以上版本没有了
-    :param device_id:
-    :return:
-    """
-    rpc = InstrumentServer(udid=device_id)
-    if not args:
-        addresses, port, psk = rpc.start_wireless()
-    else:
-        addresses, port, psk = args
-    print('start wireless', addresses, port, psk)
-    rpc_channel = rpc.init_wireless(addresses, port, psk)
-    return rpc_channel
-
-
 def get_processes(device_id: str = None, rpc_channel: InstrumentServer = None):
     """
-    获取设备的进程列表
+    Get list of processes
     :param rpc_channel:
     :param device_id:
     :return:
@@ -233,7 +234,7 @@ def get_processes(device_id: str = None, rpc_channel: InstrumentServer = None):
         _rpc_channel = init(device_id)
     else:
         _rpc_channel = rpc_channel
-    running = _rpc_channel.call("com.apple.instruments.server.services.deviceinfo", "runningProcesses").parsed
+    running = _rpc_channel.call("com.apple.instruments.server.services.deviceinfo", "runningProcesses").selector
     if not rpc_channel:
         _rpc_channel.stop()
     return running
@@ -241,7 +242,7 @@ def get_processes(device_id: str = None, rpc_channel: InstrumentServer = None):
 
 def get_channel(device_id: str = None, rpc_channel: InstrumentServer = None):
     """
-    当前设备可用服务列表
+    Get capabilities
     :return:
     """
     if not rpc_channel:
@@ -297,7 +298,7 @@ def stop_get_gpu(rpc_channel: InstrumentServer):
 
 def launch_app(bundle_id: str, device_id: str = None, rpc_channel: InstrumentServer = None):
     """
-    启动 app
+    Launch App with Bundle ID
     :param device_id:
     :param rpc_channel:
     :param bundle_id:
@@ -313,7 +314,7 @@ def launch_app(bundle_id: str, device_id: str = None, rpc_channel: InstrumentSer
     _rpc_channel.register_channel_callback(channel_name, lambda x: x)
     pid = _rpc_channel.call(channel_name,
                             "launchSuspendedProcessWithDevicePath:bundleIdentifier:environment:arguments:options:", "",
-                            bundle_id, {}, [], {"StartSuspendedKey": 0, "KillExisting": 1}).parsed
+                            bundle_id, {}, [], {"StartSuspendedKey": 0, "KillExisting": 1}).selector
     if not rpc_channel:
         _rpc_channel.stop()
     return pid
@@ -321,7 +322,7 @@ def launch_app(bundle_id: str, device_id: str = None, rpc_channel: InstrumentSer
 
 def start_get_network(callback: callable, device_id: str = None, rpc_channel: InstrumentServer = None, ):
     """
-    开始获取网络包内容
+    Start Network Monitor
     :param device_id:
     :param rpc_channel:
     :param callback:
@@ -344,7 +345,7 @@ def start_get_network(callback: callable, device_id: str = None, rpc_channel: In
 
 def stop_get_network(rpc_channel: InstrumentServer):
     """
-    结束获取网络包内容
+    Stop Network Monitor
     :param rpc_channel:
     :return:
     """
@@ -353,7 +354,7 @@ def stop_get_network(rpc_channel: InstrumentServer):
 
 def start_get_system(device_id: str = None, rpc_channel: InstrumentServer = None, callback: callable = None):
     """
-    开始获取系统数据
+    Start System Monitor
     :param device_id:
     :param rpc_channel:
     :param callback:
@@ -370,20 +371,11 @@ def start_get_system(device_id: str = None, rpc_channel: InstrumentServer = None
     def _callback(res):
         api_util.system_caller(res, callback)
 
-    _rpc_channel.register_unhandled_callback(lambda x: x)
+    _rpc_channel.register_undefined_callback(lambda x: x)
     _rpc_channel.call("com.apple.instruments.server.services.sysmontap", "setConfig:", {
-        'ur': 1000,  # 输出频率 ms
+        'ur': 1000,
         'bm': 0,
-        'procAttrs': ['memVirtualSize', 'cpuUsage', 'procStatus', 'appSleep', 'uid', 'vmPageIns', 'memRShrd',
-                      'ctxSwitch', 'memCompressed', 'intWakeups', 'cpuTotalSystem', 'responsiblePID', 'physFootprint',
-                      'cpuTotalUser', 'sysCallsUnix', 'memResidentSize', 'sysCallsMach', 'memPurgeable',
-                      'diskBytesRead', 'machPortCount', '__suddenTerm', '__arch', 'memRPrvt', 'msgSent', 'ppid',
-                      'threadCount', 'memAnon', 'diskBytesWritten', 'pgid', 'faults', 'msgRecv', '__restricted', 'pid',
-                      '__sandbox'],  # 输出所有进程信息字段，字段顺序与自定义相同（全量自字段，按需使用）
-        'sysAttrs': ['diskWriteOps', 'diskBytesRead', 'diskBytesWritten', 'threadCount', 'vmCompressorPageCount',
-                     'vmExtPageCount', 'vmFreeCount', 'vmIntPageCount', 'vmPurgeableCount', 'netPacketsIn',
-                     'vmWireCount', 'netBytesIn', 'netPacketsOut', 'diskReadOps', 'vmUsedCount', '__vmSwapUsage',
-                     'netBytesOut'],  # 系统信息字段
+        'procAttrs': ['name', 'pid', 'cpuUsage', 'threadCount', 'memResidentSize'],
         'cpuUsage': True,
         'sampleInterval': 1000000000})
     _rpc_channel.register_channel_callback("com.apple.instruments.server.services.sysmontap", _callback)
@@ -393,7 +385,7 @@ def start_get_system(device_id: str = None, rpc_channel: InstrumentServer = None
 
 def stop_get_system(rpc_channel: InstrumentServer):
     """
-    结束获取系统数据
+    Stop System Monitor
     :param rpc_channel:
     :return:
     """
@@ -404,7 +396,7 @@ def stop_get_system(rpc_channel: InstrumentServer):
 
 def get_device(device_id: str = None, rpc_channel: InstrumentServer = None):
     """
-    获取设备对象用于操作设备
+    Get Device Object
     :param device_id:
     :param rpc_channel:
     :return:
@@ -415,7 +407,7 @@ def get_device(device_id: str = None, rpc_channel: InstrumentServer = None):
 
 def get_applications(device_id: str = None, rpc_channel: InstrumentServer = None):
     """
-    获取手机应用列表
+    Get List of applications
     :param device_id:
     :param rpc_channel:
     :return:
@@ -427,7 +419,7 @@ def get_applications(device_id: str = None, rpc_channel: InstrumentServer = None
     application_list = _rpc_channel.call(
         "com.apple.instruments.server.services.device.applictionListing",
         "installedApplicationsMatching:registerUpdateToken:",
-        {}, "").parsed
+        {}, "").selector
     if not rpc_channel:
         _rpc_channel.stop()
     return application_list
@@ -480,7 +472,7 @@ def stop_xcuitest(xcuitest):
 
 def start_get_fps(device_id: str = None, rpc_channel: InstrumentServer = None, callback: callable = None):
     """
-    开始获取 fps 相关数据
+    Start FPS Monitor
     :param device_id:
     :param rpc_channel:
     :param callback:
@@ -504,14 +496,15 @@ def start_get_fps(device_id: str = None, rpc_channel: InstrumentServer = None, c
     mach_time_factor = 125 / 3
     frame_count = 0
     time_count = 0
+    time_count_frame = 0
     count_time = datetime.now().timestamp()
     _list = []
 
     def _callback(res):
-        nonlocal frame_count, last_frame, last_1_frame_cost, last_2_frame_cost, last_3_frame_cost, time_count, mach_time_factor, \
-            jank_count, big_jank_count, jank_time_count, _list, count_time
-        if type(res.plist) is InstrumentRPCParseError:
-            for args in kperf_data(res.raw.get_selector()):
+        nonlocal frame_count, last_frame, last_1_frame_cost, last_2_frame_cost, last_3_frame_cost, time_count, \
+            time_count_frame, mach_time_factor, jank_count, big_jank_count, jank_time_count, _list, count_time
+        if type(res.selector) is InstrumentRPCParseError:
+            for args in kperf_data(res.selector.data):
                 _time, code = args[0], args[7]
                 if code == 830472984:
                     if not last_frame:
@@ -529,14 +522,18 @@ def start_get_fps(device_id: str = None, rpc_channel: InstrumentServer = None, c
                                     big_jank_count += 1
 
                         last_3_frame_cost, last_2_frame_cost, last_1_frame_cost = last_2_frame_cost, last_1_frame_cost, this_frame_cost
+                        time_count_frame += this_frame_cost
                         time_count += this_frame_cost
                         last_frame = long(_time)
                         frame_count += 1
                 else:
                     time_count = (datetime.now().timestamp() - count_time) * NANO_SECOND
                 if time_count > NANO_SECOND:
+                    fps = 0.0
+                    if time_count_frame > 0:
+                        fps = frame_count / time_count_frame * NANO_SECOND
                     callback(
-                        {"currentTime": str(datetime.now()), "FPS": frame_count / time_count * NANO_SECOND,
+                        {"currentTime": str(datetime.now()), "FPS": fps,
                          "jank": jank_count,
                          "big_jank": big_jank_count, "stutter": jank_time_count / time_count})
                     jank_count = 0
@@ -544,11 +541,12 @@ def start_get_fps(device_id: str = None, rpc_channel: InstrumentServer = None, c
                     jank_time_count = 0
                     frame_count = 0
                     time_count = 0
+                    time_count_frame = 0
                     count_time = datetime.now().timestamp()
 
-    _rpc_channel.register_unhandled_callback(lambda x: x)
+    _rpc_channel.register_undefined_callback(lambda x: x)
     # 获取mach time比例
-    mach_time_info = _rpc_channel.call("com.apple.instruments.server.services.deviceinfo", "machTimeInfo").parsed
+    mach_time_info = _rpc_channel.call("com.apple.instruments.server.services.deviceinfo", "machTimeInfo").selector
     mach_time_factor = mach_time_info[1] / mach_time_info[2]
     _rpc_channel.register_channel_callback("com.apple.instruments.server.services.coreprofilesessiontap",
                                            _callback)
@@ -567,7 +565,7 @@ def start_get_fps(device_id: str = None, rpc_channel: InstrumentServer = None, c
 
 def stop_get_fps(rpc_channel: InstrumentServer):
     """
-    结束获取 fps 数据
+    Stop FPS Monitor
     :param rpc_channel:
     :return:
     """
@@ -588,7 +586,7 @@ def get_energy(pid: int, device_id: str = None, rpc_channel: InstrumentServer = 
     ret = _rpc_channel.call(channel_name, "sampleAttributes:forPIDs:", attr, {pid})
     if not rpc_channel:
         _rpc_channel.stop()
-    return ret.parsed
+    return ret.selector
 
 
 def start_get_graphics_fps(device_id: str = None, rpc_channel: InstrumentServer = None, callback: callable = None):
@@ -605,10 +603,10 @@ def start_get_graphics_fps(device_id: str = None, rpc_channel: InstrumentServer 
         _rpc_channel = rpc_channel
 
     def _callback(res):
-        data = res.parsed
+        data = res.selector
         callback({"currentTime": str(datetime.now()), "fps": data['CoreAnimationFramesPerSecond']})
 
-    _rpc_channel.register_unhandled_callback(lambda x: x)
+    _rpc_channel.register_undefined_callback(lambda x: x)
     _rpc_channel.register_channel_callback("com.apple.instruments.server.services.graphics.opengl", _callback)
     _rpc_channel.call("com.apple.instruments.server.services.graphics.opengl", "startSamplingAtTimeInterval:", 0.0)
     return _rpc_channel
@@ -640,9 +638,9 @@ def start_get_mobile_notifications(device_id: str = None, rpc_channel: Instrumen
         _rpc_channel = rpc_channel
 
     def _callback(res):
-        callback(get_auxiliary_text(res.raw))
+        callback(res.raw)
 
-    _rpc_channel.register_unhandled_callback(_callback)
+    _rpc_channel.register_undefined_callback(_callback)
 
     _rpc_channel.call(
         "com.apple.instruments.server.services.mobilenotifications",
@@ -676,8 +674,8 @@ def get_netstat(pid: int, device_id: str = None, rpc_channel: InstrumentServer =
         _rpc_channel = rpc_channel
     channel = "com.apple.xcode.debug-gauge-data-providers.NetworkStatistics"
     attr = {}
-    # print("start", _rpc_channel.call(channel, "startSamplingForPIDs:", {pid}).parsed)
-    ret = _rpc_channel.call(channel, "sampleAttributes:forPIDs:", attr, {pid}).parsed
+    # print("start", _rpc_channel.call(channel, "startSamplingForPIDs:", {pid}).selector)
+    ret = _rpc_channel.call(channel, "sampleAttributes:forPIDs:", attr, {pid}).selector
     if not rpc_channel:
         _rpc_channel.stop()
     return ret
@@ -701,77 +699,95 @@ def stop_forward(forward: ForwardPorts):
     forward.stop()
 
 
+def start_get_energy(callback: callable, device_id: str = None, rpc_channel: InstrumentServer = None, ):
+    """
+    Start Energy Monitor
+    :param device_id:
+    :param rpc_channel:
+    :param callback:
+    :return:
+    """
+
+    if not rpc_channel:
+        _rpc_channel = init(device_id)
+    else:
+        _rpc_channel = rpc_channel
+
+    # Use dictionary because just an array won't work
+    context = {
+        "receivedData": b''
+    }
+
+    def _callback(res):
+        context["receivedData"] += res.selector['data']
+        parse_energy_ouput(context["receivedData"], callback)
+
+    _rpc_channel.register_channel_callback("com.apple.instruments.server.services.power", _callback)
+    stream_num = _rpc_channel.call("com.apple.instruments.server.services.power", "openStreamForPath:",
+                                   "live/activity.dat").selector
+    _rpc_channel.call("com.apple.instruments.server.services.power", "startStreamTransfer:", float(stream_num))
+    return _rpc_channel, stream_num
+
+
+def parse_energy_ouput(data, callback):
+    import struct
+    headers = ['startingTime', 'duration', 'level']  # DTPower
+    cur = 0
+    while cur + 3 * 8 <= len(data):
+        row = dict(zip(headers, struct.unpack('>ddd', data[cur: cur + 3 * 8])))
+        callback(row)
+        cur += 3 * 8
+        pass
+    data = data[cur:]
+
+
+def stop_get_energy(rpc_channel: InstrumentServer, stream_number: float):
+    """
+    Stop Energy Monitor
+    :param rpc_channel:
+    :param stream_number:
+    :return:
+    """
+    if not rpc_channel:
+        raise api_util.PyIOSDeviceException("rpc_channel can not be None")
+    if not stream_number:
+        raise api_util.PyIOSDeviceException("stream_number can not be None")
+    rpc_channel.call("com.apple.instruments.server.services.power", "endStreamTransfer:", float(stream_number))
+
+
+counter = 0
+
+
 def te1st(res):
-    # print(res[0]["PerCPUUsage"])
+    global counter
+    counter = counter + 1
+    print(counter)
     print(res)
 
 
 if __name__ == "__main__":
-    # print(get_netstat(216))
-    # channel = PyiOSDevice()
-    # print(channel.get_netstat(216))
-    # channel.stop()
-    # c = start_get_mobile_notifications(callback=te1st)
-    # time.sleep(5)
-    # stop_get_mobile_notifications(c)
-    # time.sleep(3)
-    # print("asdasdasd")
-    # c.stop()
+    device = PyiOSDevice("00008020-000258A10C68002E")
+    # print(device.get_capabilities())
+    # print(device.get_applications())
+    # print(device.get_processes())
 
-    # channel = start_get_fps(callback=te1st)
+    # Get FPS
+    # device.start_get_fps(te1st)
     # time.sleep(10)
-    # stop_get_fps(channel)
-    # channel.stop()
+    # device.stop_get_fps()
 
-    # x = start_xcuitest("cn.rongcloud.rce.autotest.xctrunner", te1st,app_env={'USE_PORT': '8111'})
+    # Get Network Data
+    # device.start_get_network(te1st)
+    # time.sleep(10)Py
+    # device.stop_get_network()
+
+    # Get System Data
+    # device.start_get_system(te1st)
     # time.sleep(10)
-    # stop_xcuitest(x)
-    # rpc_channel = init_wireless()
-    # system = start_get_system(callback=te1st, rpc_channel=rpc_channel)
-    # time.sleep(100)
-    # stop_get_system(system)
-    # processes = channel.start_get_gpu_data(callba)
-    # print(processes)
-    # channel.stop_channel()
+    # device.stop_get_system()
 
-    # 有开始 有结束的demo
-    # channel = init()
-    # start_get_network(rpc_channel=channel, callback=te1st)
+    # device.start_get_energy(te1st)
     # time.sleep(10)
-    # stop_get_network(rpc_channel=channel)
-    # channel.stop()
+    # device.stop_get_energy()
 
-    # 普通的demo
-    # channel = get_channel()
-    # print(channel)
-    # get_device()
-
-    # channel = PyiOSDevice()
-    # print(channel.get_channel())
-
-    # channel = start_get_power_data(callback=test)
-    # # time.sleep(10)
-    # stop_get_system_data(channel)
-    # channel.stop()
-
-    # device = get_device()
-    # print(device.get_apps_bid())
-
-    # f = start_forward(["8200:8200"])
-    # time.sleep(30)
-    # stop_forward(f)
-    pass
-
-    # channel.register_unhandled_callback(test)
-    # channel.register_callback("_notifyOfPublishedCapabilities:", lambda a: print(1))
-    # start_get_gpu_data(rpc_channel=channel, callback=test)
-    # time.sleep(2)
-    # stop_get_gpurpc_channel=channel,_data(channel)
-    # channel.get_processes()
-    # process = channel.get_processes()
-    # print(process)
-    # channel.start_activity(242)
-    # print(get_channel(rpc_channel=channel))
-    # dc = channel.get_processes()
-    # print(dc)
-    # channel.stop_channel()
+    device.stop()

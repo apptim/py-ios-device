@@ -86,7 +86,7 @@ class MuxConnection:
     def listen(self):
         ret = self.exchange(self.proto.TYPE_LISTEN)
         if ret['Number'] != 0:
-            raise MuxError('Listen failed: error %d' % ret)
+            raise MuxError(f'Listen failed: error {ret}')
 
     def process(self, timeout: Optional[float] = None):
         if self.proto.connected:
@@ -133,10 +133,8 @@ class USBMux:
         for device in self.devices:
             if serial:
                 if device.device['Properties']['SerialNumber'] == serial:
-                    log.info(f"Connecting Device {device} ")
                     return device
             else:
-                log.info(f"Connecting Device {device} ")
                 return device
         if serial:
             raise NoMuxDeviceFound(f'Found {len(self.devices)} MuxDevice instances, but none with {serial}')
@@ -185,7 +183,9 @@ class UsbmuxdClient(MuxConnection):
         _, recvtag, data = self.proto.getpacket()
         if recvtag != tag:
             raise MuxError('Reply tag mismatch: expected %d, got %d' % (tag, recvtag))
-        pair_record = data['PairRecordData']
+        pair_record = data.get('PairRecordData')
+        if not pair_record:
+            return None
         pair_record = plistlib.loads(pair_record)
         return pair_record
 
@@ -221,7 +221,8 @@ class UsbmuxdClient(MuxConnection):
         _, recvtag, data = self.proto.getpacket()
         if recvtag != tag:
             raise MuxError('Reply tag mismatch: expected %d, got %d' % (tag, recvtag))
-        return data
+        return data['BUID']
+
 
 
 class BinaryProtocol:
@@ -272,6 +273,7 @@ class BinaryProtocol:
             raise MuxError('Mux is connected, cannot issue control packets')
         length = 16 + len(payload)
         data = struct.pack('IIII', length, self.VERSION, req, tag) + payload
+        log.debug(f'发送 Plist byte: {data}')
         self.socket.send(data)
 
     def getpacket(self) -> Tuple[int, int, Union[Dict[str, Any], bytes]]:
@@ -312,7 +314,6 @@ class PlistProtocol(BinaryProtocol):
         payload['ProgName'] = 'tcprelay'
         log.debug(f'发送 Plist: {payload}')
         wrapped_payload = plistlib.dumps(payload)
-        log.debug(f'发送 Plist byte: {wrapped_payload}')
         super().sendpacket(self.TYPE_PLIST, tag, wrapped_payload)
 
     def getpacket(self):

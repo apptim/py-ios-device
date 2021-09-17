@@ -39,13 +39,12 @@ client_options = {
 
 
 class InstallationProxyService(object):
+    SERVICE_NAME = 'com.apple.mobile.installation_proxy'
 
-    def __init__(self, lockdown=None, udid=None, network=None,logger=None):
+    def __init__(self, lockdown=None, udid=None, network=None, logger=None):
         self.logger = logger or logging.getLogger(__name__)
-        self.lockdown = lockdown if lockdown else LockdownClient(udid=udid,network=network)
-        if not self.lockdown:
-            raise Exception("Unable to start lockdown")
-        self.service = self.lockdown.start_service("com.apple.mobile.installation_proxy")
+        self.lockdown = lockdown if lockdown else LockdownClient(udid=udid, network=network)
+        self.service = self.lockdown.start_service(self.SERVICE_NAME)
         if not self.service:
             raise Exception("installation_proxy init error : Could not start com.apple.mobile.installation_proxy")
 
@@ -65,10 +64,10 @@ class InstallationProxyService(object):
                 self.logger.info("%s %% Complete", z.get("PercentComplete"))
             if z.get("Status") == "Complete":
                 self.logger.info("Success")
-                return z.get("Status"),True
+                return z.get("Status"), True
             if z.get('Error'):
                 self.logger.info(z.get('ErrorDescription'))
-                return z.get("Error"),False
+                return z.get("Error"), False
 
         return Exception("Install Error")
 
@@ -85,13 +84,14 @@ class InstallationProxyService(object):
 
     def install_or_upgrade(self, ipaPath, cmd="Install", options={}, handler=None, *args):
         afc = AFCClient(self.lockdown)
+        self.logger.info(f"push  path {ipaPath}")
         afc.set_file_contents("/" + os.path.basename(ipaPath), open(ipaPath, "rb").read())
         cmd = {"Command": cmd,
                "ClientOptions": options,
                "PackagePath": os.path.basename(ipaPath)}
 
         self.service.send_plist(cmd)
-        self.watch_completion(handler, args)
+        return self.watch_completion(handler, args)
 
     def install(self, ipaPath, options={}, handler=None, *args):
         return self.install_or_upgrade(ipaPath, "Install", options, handler, args)

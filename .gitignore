@@ -1,0 +1,5 @@
+﻿*.pyc
+build
+dist
+.idea
+py_ios_device.egg-info
