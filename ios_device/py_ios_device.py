@@ -7,7 +7,6 @@ import time
 import uuid
 from datetime import datetime
 
-from numpy import long, mean
 
 from ios_device.util.exceptions import InstrumentRPCParseError
 from ios_device.servers.Installation import InstallationProxyService
@@ -15,6 +14,7 @@ from ios_device.servers.Instrument import InstrumentServer
 from ios_device.util import api_util
 from ios_device.util.api_util import PyIOSDeviceException, RunXCUITest
 from ios_device.util.forward import ForwardPorts
+from ios_device.util.kperf_data import KperfData
 from ios_device.util.utils import kperf_data
 
 
@@ -471,6 +471,8 @@ def stop_xcuitest(xcuitest):
 
 
 def start_get_fps(device_id: str = None, rpc_channel: InstrumentServer = None, callback: callable = None):
+    from numpy import long, mean
+
     """
     Start FPS Monitor
     :param device_id:
@@ -501,11 +503,11 @@ def start_get_fps(device_id: str = None, rpc_channel: InstrumentServer = None, c
     _list = []
 
     def _callback(res):
-        nonlocal frame_count, last_frame, last_1_frame_cost, last_2_frame_cost, last_3_frame_cost, time_count, \
-            time_count_frame, mach_time_factor, jank_count, big_jank_count, jank_time_count, _list, count_time
+        nonlocal frame_count, last_frame, last_1_frame_cost, last_2_frame_cost, last_3_frame_cost, time_count, mach_time_factor, \
+            jank_count, big_jank_count, jank_time_count, _list, count_time
         if type(res.selector) is InstrumentRPCParseError:
-            for args in kperf_data(res.selector.data):
-                _time, code = args[0], args[7]
+            for args in Kperf.to_dict(res.selector.data):
+                _time, code = args.timestamp, args.debug_id
                 if code == 830472984:
                     if not last_frame:
                         last_frame = long(_time)
@@ -543,7 +545,7 @@ def start_get_fps(device_id: str = None, rpc_channel: InstrumentServer = None, c
                     time_count = 0
                     time_count_frame = 0
                     count_time = datetime.now().timestamp()
-
+    Kperf = KperfData()
     _rpc_channel.register_undefined_callback(lambda x: x)
     # 获取mach time比例
     mach_time_info = _rpc_channel.call("com.apple.instruments.server.services.deviceinfo", "machTimeInfo").selector
@@ -638,9 +640,9 @@ def start_get_mobile_notifications(device_id: str = None, rpc_channel: Instrumen
         _rpc_channel = rpc_channel
 
     def _callback(res):
-        callback(res.raw)
+        callback(res)
 
-    _rpc_channel.register_undefined_callback(_callback)
+    _rpc_channel.register_channel_callback("com.apple.instruments.server.services.mobilenotifications",_callback)
 
     _rpc_channel.call(
         "com.apple.instruments.server.services.mobilenotifications",
@@ -773,6 +775,19 @@ if __name__ == "__main__":
 
     # Get FPS
     # device.start_get_fps(te1st)
+    print(get_processes())
+    # print(get_netstat(216))
+    # channel = PyiOSDevice()
+    # print(channel.get_netstat(216))
+    # channel.stop()
+    # c = start_get_mobile_notifications(callback=te1st)
+    # time.sleep(5)
+    # stop_get_mobile_notifications(c)
+    # time.sleep(3)
+    # print("asdasdasd")
+    # c.stop()
+
+    # channel = start_get_fps(callback=te1st)
     # time.sleep(10)
     # device.stop_get_fps()
 
@@ -787,6 +802,18 @@ if __name__ == "__main__":
     # device.stop_get_system()
 
     # device.start_get_energy(te1st)
+    # stop_xcuitest(x)
+    # rpc_channel = init_wireless()
+    # system = start_get_system(callback=te1st, rpc_channel=rpc_channel)
+    # time.sleep(100)
+    # stop_get_system(system)
+    # processes = channel.start_get_gpu_data(callba)
+    # print(processes)
+    # channel.stop_channel()
+
+    # 有开始 有结束的demo
+    # channel = init()
+    # start_get_network(rpc_channel=channel, callback=te1st)
     # time.sleep(10)
     # device.stop_get_energy()
 

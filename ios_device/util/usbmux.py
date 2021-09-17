@@ -125,6 +125,12 @@ class USBMux:
         self.version = 1
         self.devices = self.listener.devices  # type: List[MuxDevice]
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.listener.close()
+
     def process(self, timeout: float = 0.1):
         self.listener.process(timeout)
 
@@ -163,6 +169,12 @@ class USBMux:
         connector = MuxConnection(self.socketpath, self.protoclass)
         return connector.connect(dev, port)
 
+
+    def listen_device(self):
+        self.listener.listen()
+        while True:
+            data = self.listener.proto.getpacket()
+            yield data
 
 class UsbmuxdClient(MuxConnection):
     def __enter__(self):
