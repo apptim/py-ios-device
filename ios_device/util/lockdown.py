@@ -312,9 +312,10 @@ class LockdownClient:
                     "12.1": "12.1 (16B91).zip",
                     "12.2": "12.2 (16E5212e).zip",
                     "12.4": "12.4 (16G73).zip",
+                    "14.8": "14.7.zip",  # 14.8 is not uploaded and using 14.7 works.
                 }
                 zip_name = _alias.get(version, f"{version}.zip")
-                origin_url = f"https://github.com/filsv/iPhoneOSDeviceSupport/raw/master/{zip_name}"
+                origin_url = f"https://github.com/iGhibli/iOS-DeviceSupport/raw/master/DeviceSupport/{zip_name}"
                 mirror_url = f"https://github.com/apptim/iPhoneOSDeviceSupport/raw/master/{zip_name}"
                 log.info("Download %s -> %s", mirror_url, image_zip_path)
                 try:
