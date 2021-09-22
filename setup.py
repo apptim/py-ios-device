@@ -4,7 +4,7 @@
 """
 from setuptools import setup, find_packages
 
-# 第三方依赖
+# Third party reliance
 requires = [
     "cffi==1.14.4",
     "construct==2.10.56",
@@ -26,10 +26,9 @@ setup(name='py_ios_device',
       maintainer_email='',
       url='https://github.com/YueChen-C/py-ios-device',
       packages=find_packages(),
-      long_description=open('README.md').read(),
       long_description_content_type="text/markdown",
       platforms=["any"],
-      install_requires=requires,  # 第三方库依赖
+      install_requires=requires,
       entry_points={
           'console_scripts':{
               'pyidevice=ios_device.main:cli'

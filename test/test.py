@@ -5,7 +5,7 @@
 import time
 
 from ios_device import py_ios_device
-from ios_device.py_ios_device import PyiOSDevice
+from ios_device.py_ios_device import PyiOSDevice, get_channel
 
 xcuitest_bundle_id = "cn.xx.autotest.xctrunner"
 app_bundle_id = "com.tencent.xin"
@@ -33,10 +33,8 @@ def test_get_channel():
 
 
 def test_get_channel_obj():
-    channel = PyiOSDevice()
-    channels = channel.get_channel()
+    channels = get_channel()
     print(channels)
-    channel.stop()
 
 
 def test_start_get_gpu():
@@ -166,25 +164,25 @@ def test_get_netstat_obj():
 
 
 if __name__ == "__main__":
-    # test_get_process()
-    # test_get_process_obj()
-    # test_get_channel()
-    # test_get_channel_obj()
-    # test_start_get_gpu()
-    # test_start_get_gpu_obj()
-    # test_get_device()
-    # test_get_device_obj()
-    # test_launch_app()
-    # test_launch_app_obj()
-    # test_get_applications()
-    # test_get_applications_obj()
-    # test_start_xcuitest()
-    # test_start_xcuitest_obj()
-    # test_start_get_fps()
-    # test_start_get_fps_obj()
-    # test_start_get_graphics_fps()
-    # test_start_get_graphics_fps_obj()
-    # test_start_get_mobile_notifications()
-    # test_start_get_mobile_notifications_obj()
-    # test_get_netstat()
+    test_get_process()
+    test_get_process_obj()
+    test_get_channel()
+    test_get_channel_obj()
+    test_start_get_gpu()
+    test_start_get_gpu_obj()
+    test_get_device()
+    test_get_device_obj()
+    test_launch_app()
+    test_launch_app_obj()
+    test_get_applications()
+    test_get_applications_obj()
+    test_start_xcuitest()
+    test_start_xcuitest_obj()
+    test_start_get_fps()
+    test_start_get_fps_obj()
+    test_start_get_graphics_fps()
+    test_start_get_graphics_fps_obj()
+    ()
+    test_start_get_mobile_notifications_obj()
+    test_get_netstat()
     test_get_netstat_obj()
