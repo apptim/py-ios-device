@@ -76,7 +76,7 @@ class PlistService:
         if not resp or len(resp) != 4:
             return None
         payload = self.recv_exact(struct.unpack('>L', resp)[0])
-        log.debug(f'接收 Plist byte: {payload}')
+        log.debug(f'Receive Plist byte: {payload}')
 
         if not payload:
             return None

@@ -768,14 +768,14 @@ def te1st(res):
 
 
 if __name__ == "__main__":
-    device = PyiOSDevice("00008020-000258A10C68002E")
-    # print(device.get_capabilities())
-    # print(device.get_applications())
-    # print(device.get_processes())
+    device = PyiOSDevice("00008020-000E68A91478003A")
+    print(device.get_capabilities())
+    print(device.get_applications())
+    print(device.get_processes())
 
     # Get FPS
     # device.start_get_fps(te1st)
-    print(get_processes())
+    # print(get_processes())
     # print(get_netstat(216))
     # channel = PyiOSDevice()
     # print(channel.get_netstat(216))
