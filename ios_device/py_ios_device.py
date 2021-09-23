@@ -503,8 +503,8 @@ def start_get_fps(device_id: str = None, rpc_channel: InstrumentServer = None, c
     _list = []
 
     def _callback(res):
-        nonlocal frame_count, last_frame, last_1_frame_cost, last_2_frame_cost, last_3_frame_cost, time_count, mach_time_factor, \
-            jank_count, big_jank_count, jank_time_count, _list, count_time
+        nonlocal frame_count, last_frame, last_1_frame_cost, last_2_frame_cost, last_3_frame_cost, time_count, \
+            time_count_frame, mach_time_factor, jank_count, big_jank_count, jank_time_count, _list, count_time
         if type(res.selector) is InstrumentRPCParseError:
             for args in Kperf.to_dict(res.selector.data):
                 _time, code = args.timestamp, args.debug_id
