@@ -182,7 +182,6 @@ if __name__ == "__main__":
     test_start_get_fps_obj()
     test_start_get_graphics_fps()
     test_start_get_graphics_fps_obj()
-    ()
     test_start_get_mobile_notifications_obj()
     test_get_netstat()
     test_get_netstat_obj()
