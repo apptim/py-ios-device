@@ -1,5 +1,5 @@
 """
-USBMux client that handles iDevice descovery via USB.
+USBMux client that handles iDevice discovery via USB.
 
 :author: Doug Skrypa (original: Hector Martin "marcan" <hector@marcansoft.com>)
 """
@@ -125,6 +125,12 @@ class USBMux:
         self.version = 1
         self.devices = self.listener.devices  # type: List[MuxDevice]
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.listener.close()
+
     def process(self, timeout: float = 0.1):
         self.listener.process(timeout)
 
@@ -163,6 +169,12 @@ class USBMux:
         connector = MuxConnection(self.socketpath, self.protoclass)
         return connector.connect(dev, port)
 
+
+    def listen_device(self):
+        self.listener.listen()
+        while True:
+            data = self.listener.proto.getpacket()
+            yield data
 
 class UsbmuxdClient(MuxConnection):
     def __enter__(self):
@@ -273,7 +285,7 @@ class BinaryProtocol:
             raise MuxError('Mux is connected, cannot issue control packets')
         length = 16 + len(payload)
         data = struct.pack('IIII', length, self.VERSION, req, tag) + payload
-        log.debug(f'发送 Plist byte: {data}')
+        log.debug(f'Send Plist byte: {data}')
         self.socket.send(data)
 
     def getpacket(self) -> Tuple[int, int, Union[Dict[str, Any], bytes]]:
@@ -312,17 +324,17 @@ class PlistProtocol(BinaryProtocol):
             req = [self.TYPE_CONNECT, self.TYPE_LISTEN, self.TYPE_DEVICE_LIST][req - 2]
         payload['MessageType'] = req
         payload['ProgName'] = 'tcprelay'
-        log.debug(f'发送 Plist: {payload}')
+        log.debug(f'Send Plist: {payload}')
         wrapped_payload = plistlib.dumps(payload)
         super().sendpacket(self.TYPE_PLIST, tag, wrapped_payload)
 
     def getpacket(self):
         resp, tag, payload = super().getpacket()
-        log.debug(f'接收 Plist byte: {payload}')
+        log.debug(f'Receive Plist byte: {payload}')
         if resp != self.TYPE_PLIST:
             raise MuxError('Received non-plist type %d' % resp)
         payload = plistlib.loads(payload)
-        log.debug(f'接收 Plist: {payload}')
+        log.debug(f'Get Plist: {payload}')
         return payload.get('MessageType', ''), tag, payload
 
 
