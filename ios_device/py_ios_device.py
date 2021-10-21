@@ -311,7 +311,8 @@ def is_app_debug_mode(bundle_id: str, device_id: str = None, rpc_channel: Instru
     Returns: True if the installed app 'bundle_id' was compiled in DEBUG mode.
     """
     try:
-        house_ss = HouseArrestService(lockdown=rpc_channel.lockdown if rpc_channel else None, udid=device_id)
+        channel_lockdown = rpc_channel.lockdown if rpc_channel else None
+        house_ss = HouseArrestService(lockdown= channel_lockdown, udid=device_id)
         return house_ss.send_command(bundle_id)
     except:
         return False
