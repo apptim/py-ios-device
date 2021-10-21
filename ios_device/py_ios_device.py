@@ -2,20 +2,18 @@
 @Date    : 2021-01-28
 @Author  : liyachao
 """
-import logging
-import time
 import uuid
 from datetime import datetime
-
 
 from ios_device.util.exceptions import InstrumentRPCParseError
 from ios_device.servers.Installation import InstallationProxyService
 from ios_device.servers.Instrument import InstrumentServer
+from ios_device.servers.house_arrest import HouseArrestService
 from ios_device.util import api_util
 from ios_device.util.api_util import PyIOSDeviceException, RunXCUITest
 from ios_device.util.forward import ForwardPorts
 from ios_device.util.kperf_data import KperfData
-from ios_device.util.utils import kperf_data
+#from ios_device.util.lockdown import LockdownClient
 
 
 class PyiOSDevice:
@@ -129,6 +127,16 @@ class PyiOSDevice:
         :return:
         """
         return get_applications(device_id=self.device_id, rpc_channel=self.rpc_channel)
+
+    def is_app_debug_mode(self, bundle_id: str):
+        """
+            Check's if the App was built on DEBUG mode.
+        Args:
+            bundle_id: The app's bundle identifier
+        Returns:
+            True if it is on DEBUG mode.
+        """
+        return is_app_debug_mode(bundle_id, device_id=self.device_id, rpc_channel=self.rpc_channel)
 
     def start_xcuitest(self, bundle_id, callback: callable, app_env: dict = None,
                        pair_ports=None):
@@ -296,6 +304,19 @@ def stop_get_gpu(rpc_channel: InstrumentServer):
     rpc_channel.call("com.apple.instruments.server.services.graphics.opengl", "stopSampling")
 
 
+def is_app_debug_mode(bundle_id: str, device_id: str = None, rpc_channel: InstrumentServer = None):
+    """
+    This function starts HouseArrest Service to run a command using bundle_id.
+    If the send_command returns True means the app is on DEBUG mode. Otherwise it will throw an Exception.
+    Returns: True if the installed app 'bundle_id' was compiled in DEBUG mode.
+    """
+    try:
+        house_ss = HouseArrestService(lockdown=rpc_channel.lockdown if rpc_channel else None, udid=device_id)
+        return house_ss.send_command(bundle_id)
+    except:
+        return False
+
+
 def launch_app(bundle_id: str, device_id: str = None, rpc_channel: InstrumentServer = None):
     """
     Launch App with Bundle ID
@@ -423,7 +444,6 @@ def get_applications(device_id: str = None, rpc_channel: InstrumentServer = None
     if not rpc_channel:
         _rpc_channel.stop()
     return application_list
-
 
 def start_xcuitest(bundle_id: str, callback: callable, device_id: str = None, app_env: dict = None,
                    pair_ports=None):
@@ -768,7 +788,13 @@ def te1st(res):
 
 
 if __name__ == "__main__":
+    #lock_down = LockdownClient(udid='00008020-000E68A91478003A')
+    import logging
+    logging.basicConfig(level=logging.ERROR)
     device = PyiOSDevice("00008020-000E68A91478003A")
+    for bundle in ['com.apptim.ApptimDemoiOS','com.ncr.copasub','com.apptim.ApptimDemoiOS', 'unexistant.app.package', 'com.aplicativoslegais.Memes-For-WhatsApp']:
+        print(f'Analyzing bundle: {bundle}. DEBUG MODE = {device.is_app_debug_mode(bundle)}')
+
     print(device.get_capabilities())
     print(device.get_applications())
     print(device.get_processes())
