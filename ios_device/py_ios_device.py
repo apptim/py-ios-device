@@ -359,9 +359,12 @@ def start_get_network(callback: callable, device_id: str = None, rpc_channel: In
     def _callback(res):
         api_util.network_caller(res, callback)
 
-    _rpc_channel.register_channel_callback("com.apple.instruments.server.services.networking", _callback)
-    _rpc_channel.call("com.apple.instruments.server.services.networking", "replayLastRecordedSession")
-    _rpc_channel.call("com.apple.instruments.server.services.networking", "startMonitoring")
+    try:
+        _rpc_channel.register_channel_callback("com.apple.instruments.server.services.networking", _callback)
+        _rpc_channel.call("com.apple.instruments.server.services.networking", "replayLastRecordedSession")
+        _rpc_channel.call("com.apple.instruments.server.services.networking", "startMonitoring")
+    except:
+        logging.warning("rpc_channel call exception {}".format(_rpc_channel))
     return _rpc_channel
 
 
