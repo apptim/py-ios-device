@@ -87,9 +87,9 @@ def network_caller(res, func):
                 'address' / IP(Bytes(4)),
                 Bytes(8))})
     )
-    logging.info("network caller SockAddr {}".format(SockAddr))
+    logging.debug("network caller SockAddr {}".format(SockAddr))
     data = res.selector
-    logging.info("network caller data {}".format(data))
+    logging.debug("network caller data {}".format(data))
     if data[0] == 1:
         addr = SockAddr.parse(data[1][0])
         data[1][0] = f"{addr.network.address}:{addr.port}"
