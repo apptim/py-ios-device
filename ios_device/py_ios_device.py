@@ -529,46 +529,50 @@ def start_get_fps(device_id: str = None, rpc_channel: InstrumentServer = None, c
     def _callback(res):
         nonlocal frame_count, last_frame, last_1_frame_cost, last_2_frame_cost, last_3_frame_cost, time_count, \
             time_count_frame, mach_time_factor, jank_count, big_jank_count, jank_time_count, _list, count_time
-        if type(res.selector) is InstrumentRPCParseError:
-            for args in Kperf.to_dict(res.selector.data):
-                _time, code = args.timestamp, args.debug_id
-                if code == 830472984:
-                    if not last_frame:
-                        last_frame = long(_time)
-                    else:
-                        this_frame_cost = (long(_time) - last_frame) * mach_time_factor
-                        if all([last_3_frame_cost != 0, last_2_frame_cost != 0, last_1_frame_cost != 0]):
-                            if this_frame_cost > mean([last_3_frame_cost, last_2_frame_cost, last_1_frame_cost]) * 2 \
-                                    and this_frame_cost > MOVIE_FRAME_COST * NANO_SECOND * 2:
-                                jank_count += 1
-                                jank_time_count += this_frame_cost
-                                if this_frame_cost > mean(
-                                        [last_3_frame_cost, last_2_frame_cost, last_1_frame_cost]) * 3 \
-                                        and this_frame_cost > MOVIE_FRAME_COST * NANO_SECOND * 3:
-                                    big_jank_count += 1
+        try:
+            if type(res.selector) is InstrumentRPCParseError:
+                for args in Kperf.to_dict(res.selector.data):
+                    _time, code = args.timestamp, args.debug_id
+                    if code == 830472984:
+                        if not last_frame:
+                            last_frame = long(_time)
+                        else:
+                            this_frame_cost = (long(_time) - last_frame) * mach_time_factor
+                            if all([last_3_frame_cost != 0, last_2_frame_cost != 0, last_1_frame_cost != 0]):
+                                if this_frame_cost > mean([last_3_frame_cost, last_2_frame_cost, last_1_frame_cost]) * 2 \
+                                        and this_frame_cost > MOVIE_FRAME_COST * NANO_SECOND * 2:
+                                    jank_count += 1
+                                    jank_time_count += this_frame_cost
+                                    if this_frame_cost > mean(
+                                            [last_3_frame_cost, last_2_frame_cost, last_1_frame_cost]) * 3 \
+                                            and this_frame_cost > MOVIE_FRAME_COST * NANO_SECOND * 3:
+                                        big_jank_count += 1
 
-                        last_3_frame_cost, last_2_frame_cost, last_1_frame_cost = last_2_frame_cost, last_1_frame_cost, this_frame_cost
-                        time_count_frame += this_frame_cost
-                        time_count += this_frame_cost
-                        last_frame = long(_time)
-                        frame_count += 1
-                else:
-                    time_count = (datetime.now().timestamp() - count_time) * NANO_SECOND
-                if time_count > NANO_SECOND:
-                    fps = 0.0
-                    if time_count_frame > 0:
-                        fps = frame_count / time_count_frame * NANO_SECOND
-                    callback(
-                        {"currentTime": str(datetime.now()), "FPS": fps,
-                         "jank": jank_count,
-                         "big_jank": big_jank_count, "stutter": jank_time_count / time_count})
-                    jank_count = 0
-                    big_jank_count = 0
-                    jank_time_count = 0
-                    frame_count = 0
-                    time_count = 0
-                    time_count_frame = 0
-                    count_time = datetime.now().timestamp()
+                            last_3_frame_cost, last_2_frame_cost, last_1_frame_cost = last_2_frame_cost, last_1_frame_cost, this_frame_cost
+                            time_count_frame += this_frame_cost
+                            time_count += this_frame_cost
+                            last_frame = long(_time)
+                            frame_count += 1
+                    else:
+                        time_count = (datetime.now().timestamp() - count_time) * NANO_SECOND
+                    if time_count > NANO_SECOND:
+                        fps = 0.0
+                        if time_count_frame > 0:
+                            fps = frame_count / time_count_frame * NANO_SECOND
+                        callback(
+                            {"currentTime": str(datetime.now()), "FPS": fps,
+                             "jank": jank_count,
+                             "big_jank": big_jank_count, "stutter": jank_time_count / time_count})
+                        jank_count = 0
+                        big_jank_count = 0
+                        jank_time_count = 0
+                        frame_count = 0
+                        time_count = 0
+                        time_count_frame = 0
+                        count_time = datetime.now().timestamp()
+        except:
+            import logging
+            logging.debug("callback exception!")
     Kperf = KperfData()
     _rpc_channel.register_undefined_callback(lambda x: x)
     # 获取mach time比例
