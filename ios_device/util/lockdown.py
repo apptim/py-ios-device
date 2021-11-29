@@ -105,9 +105,9 @@ class LockdownClient:
             log.debug(f'{E}')
             log.debug(f'No iTunes pairing record found for device {self.identifier}')
             log.debug('Getting pair record from usbmuxd')
-        finally:
-            with UsbmuxdClient() as usb:
-                return usb.get_pair_record(self.udid)
+        with UsbmuxdClient() as usb:
+            return usb.get_pair_record(self.udid)
+
 
     def _validate_pairing(self):
         pair_record = self._get_pair_record() or {}
