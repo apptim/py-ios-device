@@ -8,6 +8,10 @@ import io
 
 from construct import Struct, Const, Padding, Int32ul, Int64ul, Array, GreedyRange, Byte, FixedSized, \
     CString
+from ios_device.util.variables import LOG
+from . import Log
+
+log = Log.getLogger(LOG.DTXMsg.value)
 
 KDBG_CLASS_MASK = 0xff000000
 KDBG_CLASS_OFFSET = 24
@@ -920,12 +924,16 @@ class KdBufParser:
         self.final_code = kdbg_extract_code(data.debug_id)
 
     @classmethod
-    def decode(cls,buf_io:io.BytesIO):
+    def decode(cls, buf_io: io.BytesIO):
         while True:
             buf = buf_io.read(64)
             if not buf:
                 return
-            data = kperf_data.parse(buf)
+            try:
+                data = kperf_data.parse(buf)
+            except Exception as e:
+                log.error(f"Error parsing buf: {e}")
+                continue
             yield cls(data)
 
 class KperfData:

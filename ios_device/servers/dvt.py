@@ -29,12 +29,12 @@ class DTXClient:
             if not chunk:
                 raise MuxError("socket connection close")
             buf.extend(chunk)
-        log.debug(f'接收 DTX buf: {buf}')
+        #log.debug(f'接收 DTX buf: {buf}')
         return buf
 
     def send_dtx(self, client, dtx):
         buffer = bytes(dtx)
-        log.debug(f'发送 DTX: {buffer}')
+        #log.debug(f'发送 DTX: {buffer}')
         return client.send(buffer)
 
     def recv_dtx(self, client):
@@ -192,7 +192,7 @@ class DTXServer:
         reply._selector = b'\00' * 16
         self._client.send_dtx(self._cli, reply)
 
-    def wait_reply(self, message_id: int, timeout=30.0) -> DTXMessage:
+    def wait_reply(self, message_id: int, timeout=60.0) -> DTXMessage:
         ret = self._reply_queues[message_id].get(timeout=timeout)
         if ret is None:
             raise MuxError("connection closed")
@@ -217,6 +217,9 @@ class DTXServer:
         self._next_identifier += 1
         for arg in auxiliaries:
             object_to_aux(arg, aux)
+
+        if not self._client:
+            self._client = DTXClient()
         self._client.send_dtx(self._cli, dtx)
         if sync:
             ret = self.wait_reply(identifier)
