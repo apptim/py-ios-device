@@ -192,7 +192,7 @@ class DTXServer:
         reply._selector = b'\00' * 16
         self._client.send_dtx(self._cli, reply)
 
-    def wait_reply(self, message_id: int, timeout=60.0) -> DTXMessage:
+    def wait_reply(self, message_id: int, timeout=30.0) -> DTXMessage:
         ret = self._reply_queues[message_id].get(timeout=timeout)
         if ret is None:
             raise MuxError("connection closed")
