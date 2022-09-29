@@ -3,22 +3,13 @@
 @Author  : liyachao
 """
 from setuptools import setup, find_packages
+from ios_device import __version__
 
-# Third party reliance
-requires = [
-    "cffi==1.14.4",
-    "construct==2.10.56",
-    "cryptography==3.3.2",
-    "pyasn1==0.4.8",
-    "pycparser==2.20",
-    "pyOpenSSL==20.0.0",
-    "six==1.15.0",
-    "requests>=2.25.1",
-    'click>=7.1.2',
-    'coloredlogs>=3.3.2',
-]
+REQUIREMENTS = [i.strip() for i in open("requirements.txt").readlines()]
+
+
 setup(name='py_ios_device',
-      version="2.2.4",
+      version=__version__,
       description='Get ios data and operate ios devices',
       author='chenpeijie & liyachao',
       author_email='cpjsf@163.com',
@@ -27,11 +18,16 @@ setup(name='py_ios_device',
       url='https://github.com/YueChen-C/py-ios-device',
       packages=find_packages(),
       long_description_content_type="text/markdown",
-      platforms=["any"],
-      install_requires=requires,
+      install_requires=REQUIREMENTS,
+      python_requires=">=3.7",
+      include_package_data=True,
+      classifiers=[
+          "Programming Language :: Python :: 3",
+          "Operating System :: OS Independent",
+      ],
       entry_points={
           'console_scripts':{
               'pyidevice=ios_device.main:cli'
           }
       },
-      )
+)

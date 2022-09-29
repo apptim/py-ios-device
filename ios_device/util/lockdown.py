@@ -28,6 +28,8 @@ from ..util import Log, PROGRAM_NAME
 
 __all__ = ['LockdownClient']
 log = Log.getLogger(LOG.LockDown.value)
+DEVICE_SUPPORT_SIZE = 5 * 1024
+DOWN_SUPPORT_TIMEOUT = 15
 
 
 def get_app_dir(*paths) -> str:
@@ -255,6 +257,8 @@ class LockdownClient:
             if resp.get('Error') == 'PasswordProtected':
                 raise StartServiceError(f'Unable to start service={name!r} - a password must be entered on the device')
             error = resp.get('Error')
+            if self.ios_version >= LooseVersion('16.0'):
+                log.info('try `pyidevice enable_developer_mode`')
             raise StartServiceError(f'Unable to start service={name!r} - {error}')
         log.debug(f'connect port: {resp.get("Port")}')
         plist_service = PlistService(
@@ -277,12 +281,16 @@ class LockdownClient:
 
         try:
             tmp_local_filename = local_filename + f".download-{int(time.time() * 1000)}"
-            with requests.get(url, stream=True) as r:
+            with requests.get(url, stream=True, timeout=DOWN_SUPPORT_TIMEOUT) as r:
                 r.raise_for_status()
                 with open(tmp_local_filename, 'wb') as f:
                     shutil.copyfileobj(r.raw, f, length=16 << 20)
                     f.flush()
                 os.rename(tmp_local_filename, local_filename)
+                size = os.path.getsize(local_filename)
+                if size < DEVICE_SUPPORT_SIZE:
+                    log.error("%r file download failed with abnormal file size", local_filename)
+                    os.remove(local_filename)
                 log.info("%r download successfully", local_filename)
         finally:
             if os.path.isfile(tmp_local_filename):
@@ -384,7 +392,7 @@ def read_home_file(foldername: str, filename: str) -> Optional[bytes]:
 
 def write_home_file(foldername: str, filename: str, data: bytes) -> str:
     path = get_home_path(foldername, filename)
-    log.info(f'save path :{path}')
+    log.debug(f'save path :{path}')
     with path.open('wb') as f:
         f.write(data)
     return path.as_posix()

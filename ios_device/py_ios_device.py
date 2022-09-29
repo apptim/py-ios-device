@@ -492,7 +492,6 @@ def stop_xcuitest(xcuitest):
 
 
 def start_get_fps(device_id: str = None, rpc_channel: InstrumentServer = None, callback: callable = None):
-    from numpy import long, mean
 
     """
     Start FPS Monitor
@@ -527,8 +526,8 @@ def start_get_fps(device_id: str = None, rpc_channel: InstrumentServer = None, c
         nonlocal frame_count, last_frame, last_1_frame_cost, last_2_frame_cost, last_3_frame_cost, time_count, \
             time_count_frame, mach_time_factor, jank_count, big_jank_count, jank_time_count, _list, count_time
         if type(res.selector) is InstrumentRPCParseError:
-            for args in Kperf.to_dict(res.selector.data):
-                _time, code = args.timestamp, args.debug_id
+            for args in kperf_data(res.selector.data):
+                _time, code = args[0], args[7]
                 if code == 830472984:
                     if not last_frame:
                         last_frame = long(_time)
@@ -549,8 +548,8 @@ def start_get_fps(device_id: str = None, rpc_channel: InstrumentServer = None, c
                         time_count += this_frame_cost
                         last_frame = long(_time)
                         frame_count += 1
-                else:
-                    time_count = (datetime.now().timestamp() - count_time) * NANO_SECOND
+                # else:
+                #     time_count = (datetime.now().timestamp() - count_time) * NANO_SECOND
                 if time_count > NANO_SECOND:
                     fps = 0.0
                     if time_count_frame > 0:
@@ -566,6 +565,7 @@ def start_get_fps(device_id: str = None, rpc_channel: InstrumentServer = None, c
                     time_count = 0
                     time_count_frame = 0
                     count_time = datetime.now().timestamp()
+
     Kperf = KperfData()
     _rpc_channel.register_undefined_callback(lambda x: x)
     # 获取mach time比例
@@ -663,7 +663,7 @@ def start_get_mobile_notifications(device_id: str = None, rpc_channel: Instrumen
     def _callback(res):
         callback(res)
 
-    _rpc_channel.register_channel_callback("com.apple.instruments.server.services.mobilenotifications",_callback)
+    _rpc_channel.register_channel_callback("com.apple.instruments.server.services.mobilenotifications", _callback)
 
     _rpc_channel.call(
         "com.apple.instruments.server.services.mobilenotifications",
